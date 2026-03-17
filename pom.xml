@@ -19,7 +19,17 @@
 
     <properties>
         <java.version>17</java.version>
+        <github.owner>studiovlamar</github.owner>
+        <github.repo>java-app-dmari</github.repo>
     </properties>
+
+    <distributionManagement>
+        <repository>
+            <id>github</id>
+            <name>GitHub Packages</name>
+            <url>https://maven.pkg.github.com/${github.owner}/${github.repo}</url>
+        </repository>
+    </distributionManagement>
 
     <dependencies>
         <dependency>
