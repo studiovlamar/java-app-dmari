@@ -7,7 +7,6 @@ on:
 
 env:
   EB_APP: skillbrain-app
-  EB_ENV: skillbrain-env
   AWS_REGION: ${{ secrets.AWS_REGION }}
 
 jobs:
@@ -36,7 +35,7 @@ jobs:
           name: eb-bundle
           path: bundle.zip
 
-  deploy:
+  deploy_staging:
     needs: build_test_package
     runs-on: ubuntu-latest
     steps:
@@ -50,13 +49,55 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
-      - name: Deploy to Elastic Beanstalk
+      - name: Deploy to Elastic Beanstalk staging
         uses: einaregilsson/beanstalk-deploy@v21
         with:
           aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           application_name: ${{ env.EB_APP }}
-          environment_name: ${{ env.EB_ENV }}
-          version_label: ${{ github.sha }}
+          environment_name: skillbrain-env-staging
+          version_label: staging-${{ github.sha }}
           region: ${{ env.AWS_REGION }}
           deployment_package: bundle.zip
+
+  healthcheck_staging:
+    needs: deploy_staging
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check staging
+        run: |
+          curl -fsSL "http://skillbrain-env-staging.eba-srdwessj.eu-west-3.elasticbeanstalk.com/" > /dev/null
+
+  deploy_prod:
+    needs: healthcheck_staging
+    environment: production
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: eb-bundle
+
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Deploy to Elastic Beanstalk production
+        uses: einaregilsson/beanstalk-deploy@v21
+        with:
+          aws_access_key: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws_secret_key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          application_name: ${{ env.EB_APP }}
+          environment_name: skillbrain-env-prod
+          version_label: prod-${{ github.sha }}
+          region: ${{ env.AWS_REGION }}
+          deployment_package: bundle.zip
+
+  healthcheck_prod:
+    needs: deploy_prod
+    runs-on: ubuntu-latest
+    steps:
+      - name: Health check prod
+        run: |
+          curl -fsSL "http://skillbrain-env-prod.eba-srdwessj.eu-west-3.elasticbeanstalk.com/" > /dev/null
